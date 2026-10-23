@@ -29,12 +29,23 @@ uv add "playground-retrieval[rerank] @ git+https://github.com/calm-sea-psy/llm-p
 ## 사용 예
 
 ```python
-from playground_retrieval.search import Bm25Index, Bm25Retriever, DenseRetriever, HybridRetriever, KiwiAnalyzer, Reranker
+from playground_retrieval.search import (
+    Bm25Index,
+    Bm25Retriever,
+    DenseRetriever,
+    HybridRetriever,
+    KiwiAnalyzer,
+    Reranker,
+)
 from playground_retrieval.store import PgConfig, PgStore, QdrantStore
 
 with PgStore.connect(PgConfig.from_env()) as pg:
-    dense = DenseRetriever(embedder, QdrantStore.from_env(), pg, collection="kowiki_kure-v1", source="kowiki")
-    bm25 = Bm25Retriever(Bm25Index.load(index_dir), KiwiAnalyzer(), pg, collection="kowiki_kure-v1", source="kowiki")
+    dense = DenseRetriever(
+        embedder, QdrantStore.from_env(), pg, collection="kowiki_kure-v1", source="kowiki"
+    )
+    bm25 = Bm25Retriever(
+        Bm25Index.load(index_dir), KiwiAnalyzer(), pg, collection="kowiki_kure-v1", source="kowiki"
+    )
     hits = Reranker(HybridRetriever([dense, bm25]), scorer).search("조선의 수도는?", k=5)
 ```
 
