@@ -1,0 +1,44 @@
+[project]
+name = "playground-retrieval"
+version = "0.1.0"
+description = "검색 엔진 — BM25(Kiwi) · Dense(Qdrant/FAISS) · 하이브리드(RRF) · 리랭커 · 저장소 · 인제스트 흐름 · ANN 지표 (llm-playground 공통 모듈)"
+readme = "README.md"
+authors = [
+    { name = "yunpilsoo", email = "305675348+calm-sea-psy@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "faiss-cpu>=1.15.1",
+    "kiwipiepy>=0.24.1",
+    "numpy>=2.5.4",
+    "playground-corpus",
+    "psycopg[binary]>=3.3.6",
+    "qdrant-client>=1.19.1",
+]
+
+[project.optional-dependencies]
+# 리랭커(CrossEncoderScorer) · 임베딩 모델 실행 — torch · sentence-transformers
+rerank = ["playground-corpus[local]"]
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
+
+# 이 레포에서 개발할 때만 쓰는 설정. 설치하는 쪽에는 영향이 없다
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+playground-corpus = { git = "https://github.com/calm-sea-psy/llm-playground-corpus", tag = "v0.1.0" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
