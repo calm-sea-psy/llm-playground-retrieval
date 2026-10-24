@@ -1,10 +1,16 @@
 import asyncio
 import time
 
+import pytest
 from playground_corpus import Chunk
 
 from playground_retrieval.core import Filters, Hit
-from playground_retrieval.search import SearchService
+from playground_retrieval.search import (
+    KiwiAnalyzer,
+    SearchService,
+    SearchSettings,
+    service as service_module,
+)
 from playground_retrieval.search.service import TOP_K
 
 CHUNK = Chunk(
@@ -64,3 +70,24 @@ def test_search_runs_one_query_at_a_time():
 
     assert len(retriever.calls) == 5
     assert retriever.max_running == 1
+
+
+class _StopBuildError(Exception):
+    """build 가 BM25 색인을 준비하는 데까지 왔는지 보려고 거기서 멈춘다 (모델 · 저장소 없이)."""
+
+
+def test_build_uses_the_given_analyzer(monkeypatch: pytest.MonkeyPatch):
+    given = KiwiAnalyzer(kiwi=object())  # Kiwi 를 올리지 않는다 — 넘긴 것이 그대로 쓰이는지만 본다
+    seen = []
+
+    def fake_index(settings, pg, analyzer):
+        seen.append(analyzer)
+        raise _StopBuildError
+
+    monkeypatch.setattr(service_module, "_bm25_index", fake_index)
+    settings = SearchSettings(collection="c", source="s", model="kure-v1")
+
+    with pytest.raises(_StopBuildError):
+        SearchService.build(settings, pg=None, qdrant=None, analyzer=given)
+
+    assert seen == [given]
