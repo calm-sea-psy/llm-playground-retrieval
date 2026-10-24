@@ -6,6 +6,7 @@ import os
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Literal, get_args
 
 import numpy as np
 from numpy.typing import NDArray
@@ -15,6 +16,9 @@ from qdrant_client import QdrantClient, models
 from playground_retrieval.core import VectorHit
 
 URL = "http://localhost:6333"
+QdrantMode = Literal["local", "cloud"]
+QDRANT_MODES: tuple[str, ...] = get_args(QdrantMode)
+MODE_ENV = "QDRANT_MODE"
 UPSERT_BATCH = 512  # 요청 하나에 1024d 벡터 512개 ≈ 2MB
 _POINT_NAMESPACE = uuid.UUID(
     "6f3c7a52-0d1e-4c3b-9a55-2b8f1e7c4d90"
@@ -35,14 +39,28 @@ class QdrantConfig:
 
     @classmethod
     def from_env(cls) -> QdrantConfig:
-        """QDRANT_URL · QDRANT_API_KEY · QDRANT_GRPC(0 이면 REST) · QDRANT_TIMEOUT 에서 읽는다.
+        """QDRANT_MODE 가 cloud 일 때만 QDRANT_URL · QDRANT_API_KEY 를 쓴다. 없거나 local 이면 로컬 Qdrant.
 
-        값은 `uv run --env-file .env.cloud ...` 처럼 파일로 넘길 수 있다 (.env* 는 git 제외).
+        주소 · 키는 환경에 들어 있기만 해서는 접속 대상을 바꾸지 않는다 — 외부 키 · 주소를 한 파일에 모아 두고,
+        켜고 끄는 값(QDRANT_MODE)만 다른 파일에 둘 수 있게. QDRANT_GRPC(0 이면 REST) · QDRANT_TIMEOUT 은 모드와
+        상관없이 읽는다. 값은 `uv run --env-file .env.cloud --env-file .env.config ...` 처럼 파일로 넘긴다.
+
+        Raises:
+          ValueError: QDRANT_MODE 가 local · cloud 가 아니거나, cloud 인데 QDRANT_URL 이 비었을 때.
         """
+        mode = os.environ.get(MODE_ENV) or "local"
+        if mode not in QDRANT_MODES:
+            raise ValueError(f"{MODE_ENV} must be one of {QDRANT_MODES}, got {mode=}")
+        url, api_key = URL, None
+        if mode == "cloud":
+            url = os.environ.get("QDRANT_URL") or ""
+            if not url:
+                raise ValueError(f"{MODE_ENV}=cloud needs QDRANT_URL")
+            api_key = os.environ.get("QDRANT_API_KEY") or None
         timeout = os.environ.get("QDRANT_TIMEOUT")
         return cls(
-            url=os.environ.get("QDRANT_URL") or URL,
-            api_key=os.environ.get("QDRANT_API_KEY") or None,
+            url=url,
+            api_key=api_key,
             prefer_grpc=os.environ.get("QDRANT_GRPC", "1") != "0",
             timeout=int(timeout) if timeout else None,
         )

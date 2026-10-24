@@ -45,20 +45,39 @@ CHUNKS = [
 ]
 
 
-def test_qdrant_config_defaults_to_local_grpc(monkeypatch: pytest.MonkeyPatch):
-    for name in ("QDRANT_URL", "QDRANT_API_KEY", "QDRANT_GRPC", "QDRANT_TIMEOUT"):
-        monkeypatch.delenv(name, raising=False)
+QDRANT_ENV = ("QDRANT_MODE", "QDRANT_URL", "QDRANT_API_KEY", "QDRANT_GRPC", "QDRANT_TIMEOUT")
 
+
+@pytest.fixture
+def clean_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
+    for name in QDRANT_ENV:
+        monkeypatch.delenv(name, raising=False)
+    return monkeypatch
+
+
+def test_qdrant_config_defaults_to_local_grpc(clean_env: pytest.MonkeyPatch):
     assert QdrantConfig.from_env() == QdrantConfig(
         url=QDRANT_URL, api_key=None, prefer_grpc=True, timeout=None
     )
 
 
-def test_qdrant_config_reads_cloud_settings_and_hides_key(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("QDRANT_URL", "https://example.cloud.qdrant.io:6333")
-    monkeypatch.setenv("QDRANT_API_KEY", "secret-key")
-    monkeypatch.setenv("QDRANT_GRPC", "0")
-    monkeypatch.setenv("QDRANT_TIMEOUT", "60")
+def test_qdrant_config_ignores_cloud_address_unless_mode_is_cloud(clean_env: pytest.MonkeyPatch):
+    clean_env.setenv("QDRANT_URL", "https://example.cloud.qdrant.io:6333")
+    clean_env.setenv("QDRANT_API_KEY", "secret-key")
+
+    local = QdrantConfig.from_env()
+    clean_env.setenv("QDRANT_MODE", "local")
+
+    assert (local.url, local.api_key) == (QDRANT_URL, None)  # 주소 · 키가 있어도 켜지 않으면 로컬
+    assert QdrantConfig.from_env() == local
+
+
+def test_qdrant_config_reads_cloud_settings_and_hides_key(clean_env: pytest.MonkeyPatch):
+    clean_env.setenv("QDRANT_MODE", "cloud")
+    clean_env.setenv("QDRANT_URL", "https://example.cloud.qdrant.io:6333")
+    clean_env.setenv("QDRANT_API_KEY", "secret-key")
+    clean_env.setenv("QDRANT_GRPC", "0")
+    clean_env.setenv("QDRANT_TIMEOUT", "60")
 
     config = QdrantConfig.from_env()
 
@@ -68,9 +87,20 @@ def test_qdrant_config_reads_cloud_settings_and_hides_key(monkeypatch: pytest.Mo
     assert "secret-key" not in repr(config)
 
 
-def test_qdrant_config_treats_empty_values_as_unset(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("QDRANT_URL", "")
-    monkeypatch.setenv("QDRANT_API_KEY", "")  # .env.example 를 복사만 하고 비워 둔 경우
+def test_qdrant_config_rejects_cloud_without_url_and_unknown_mode(clean_env: pytest.MonkeyPatch):
+    clean_env.setenv("QDRANT_MODE", "cloud")
+    with pytest.raises(ValueError, match="needs QDRANT_URL"):
+        QdrantConfig.from_env()
+
+    clean_env.setenv("QDRANT_MODE", "Cloud")
+    with pytest.raises(ValueError, match="must be one of"):
+        QdrantConfig.from_env()
+
+
+def test_qdrant_config_treats_empty_values_as_unset(clean_env: pytest.MonkeyPatch):
+    clean_env.setenv("QDRANT_MODE", "")
+    clean_env.setenv("QDRANT_URL", "")
+    clean_env.setenv("QDRANT_API_KEY", "")  # .env.example 를 복사만 하고 비워 둔 경우
 
     config = QdrantConfig.from_env()
 
