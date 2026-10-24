@@ -93,14 +93,27 @@ class SearchService:
 
     @classmethod
     def build(
-        cls, settings: SearchSettings, pg: ChunkCatalog, qdrant: VectorIndex
+        cls,
+        settings: SearchSettings,
+        pg: ChunkCatalog,
+        qdrant: VectorIndex,
+        *,
+        analyzer: KiwiAnalyzer | None = None,
     ) -> SearchService:
         """모델을 올리고 BM25 색인(저장한 것 또는 PG 청크로 새로)을 준비해 Hybrid + Reranker 를 조립한다.
+
+        Args:
+          settings: 컬렉션 · 모델 · 후보 수 같은 검색 구성.
+          pg: 청크 원문 저장소 (BM25 색인을 새로 만들 때 전체를 읽는다).
+          qdrant: Dense 검색 벡터 색인.
+          analyzer: BM25 형태소 분석기. 없으면 새로 만든다. Kiwi 모델 하나가 메모리를 약 500MB 쓰니,
+            같은 프로세스에서 Kiwi 를 따로 쓰는 쪽(제품의 질문 관문 등)이 있으면 같은 Kiwi 로 만든
+            `KiwiAnalyzer(kiwi)` 를 넘긴다.
 
         Raises:
           ValueError: 컬렉션에 청크가 없을 때 (적재 전이거나 이름이 틀렸을 때).
         """
-        analyzer = KiwiAnalyzer()
+        analyzer = analyzer or KiwiAnalyzer()
         start = time.perf_counter()
         index = _bm25_index(settings, pg, analyzer)
         if not len(index):
