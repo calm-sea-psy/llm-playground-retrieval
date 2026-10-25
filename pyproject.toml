@@ -1,6 +1,6 @@
 [project]
 name = "playground-retrieval"
-version = "0.1.1"
+version = "0.2.0"
 description = "검색 엔진 — BM25(Kiwi) · Dense(Qdrant/FAISS) · 하이브리드(RRF) · 리랭커 · 저장소 · 인제스트 흐름 · ANN 지표 (llm-playground 공통 모듈)"
 readme = "README.md"
 authors = [

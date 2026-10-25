@@ -49,6 +49,8 @@ with PgStore.connect(PgConfig.from_env()) as pg:
     hits = Reranker(HybridRetriever([dense, bm25]), scorer).search("조선의 수도는?", k=5)
 ```
 
+`QdrantStore.from_env()` 는 기본으로 로컬 Qdrant(`http://localhost:6333`)에 붙는다. Qdrant Cloud 는 `QDRANT_MODE=cloud` 일 때만 `QDRANT_URL` · `QDRANT_API_KEY` 를 쓴다 — 주소 · 키가 환경에 있어도 모드를 켜지 않으면 로컬이다. `QDRANT_GRPC=0`(REST) · `QDRANT_TIMEOUT`(초)은 모드와 상관없이 읽는다.
+
 ## 개발
 
 ```bash
