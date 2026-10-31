@@ -29,11 +29,16 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.1",
 ]
+# bench/ 전용. 기본 설치 · 테스트에는 들어가지 않는다: uv run --group bench --extra rerank ...
+bench = [
+    "playground-evalkit",
+]
 
 # 이 레포에서 개발할 때만 쓰는 설정. 설치하는 쪽에는 영향이 없다
 [tool.uv.sources]
 torch = { index = "pytorch-cu128" }
 playground-corpus = { git = "https://github.com/calm-sea-psy/llm-playground-corpus", tag = "v0.1.0" }
+playground-evalkit = { git = "https://github.com/calm-sea-psy/llm-playground-llm", tag = "evalkit-v0.2.0", subdirectory = "packages/evalkit" }
 
 [[tool.uv.index]]
 name = "pytorch-cu128"
