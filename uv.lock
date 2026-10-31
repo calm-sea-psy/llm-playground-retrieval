@@ -832,6 +832,11 @@ local = [
 ]
 
 [[package]]
+name = "playground-evalkit"
+version = "0.2.0"
+source = { git = "https://github.com/calm-sea-psy/llm-playground-llm?subdirectory=packages%2Fevalkit&tag=evalkit-v0.2.0#5e455b5f5ddc13a95074c42a213759a64876931d" }
+
+[[package]]
 name = "playground-retrieval"
 version = "0.2.0"
 source = { editable = "." }
@@ -850,6 +855,9 @@ rerank = [
 ]
 
 [package.dev-dependencies]
+bench = [
+    { name = "playground-evalkit" },
+]
 dev = [
     { name = "pytest" },
     { name = "ruff" },
@@ -868,6 +876,7 @@ requires-dist = [
 provides-extras = ["rerank"]
 
 [package.metadata.requires-dev]
+bench = [{ name = "playground-evalkit", git = "https://github.com/calm-sea-psy/llm-playground-llm?subdirectory=packages%2Fevalkit&tag=evalkit-v0.2.0" }]
 dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.17.1" },

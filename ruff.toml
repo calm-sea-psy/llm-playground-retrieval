@@ -21,5 +21,6 @@ known-first-party = ["playground_retrieval"]
 [lint.extend-per-file-ignores]
 # 디렉터리 패턴은 이 파일(프로젝트 루트) 기준.
 "tests/**/*.py" = ["S101", "D", "ANN", "PLR2004", "S106", "S105"]
+"bench/**/*.py" = ["T20", "D", "PLC0415"]
 # 수치 계산: 논문 표기 변수명 · 계산식 안 숫자 리터럴 허용
 "**/eval/ann_bench.py" = ["N803", "N806", "PLR2004"]
