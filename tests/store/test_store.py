@@ -107,6 +107,64 @@ def test_qdrant_config_treats_empty_values_as_unset(clean_env: pytest.MonkeyPatc
     assert (config.url, config.api_key) == (QDRANT_URL, None)
 
 
+def test_pg_config_hides_password_in_repr():
+    config = PgConfig(password="secret-password")
+
+    assert "secret-password" not in repr(config)
+    assert "password=secret-password" in config.conninfo
+
+
+class _RowsConnection:
+    """조회 결과 행을 그대로 돌려주는 가짜 접속. Chunk 필드 순서와 상관없이 컬럼 순서대로 매핑되는지 본다."""
+
+    def __init__(self, rows: list[tuple[object, ...]]) -> None:
+        self._rows = rows
+
+    def cursor(self, name: str | None = None) -> "_RowsCursor":
+        del name  # 서버 쪽 커서 여부는 여기서 보지 않는다
+        return _RowsCursor(self._rows)
+
+    def rollback(self) -> None:
+        pass
+
+
+class _RowsCursor:
+    def __init__(self, rows: list[tuple[object, ...]]) -> None:
+        self._rows = rows
+
+    def __enter__(self) -> "_RowsCursor":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        pass
+
+    def execute(self, sql: str, params: object) -> None:
+        del sql, params
+
+    def fetchall(self) -> list[tuple[object, ...]]:
+        return self._rows
+
+    def __iter__(self) -> Iterator[tuple[object, ...]]:
+        return iter(self._rows)
+
+
+def test_pg_maps_selected_columns_to_chunk_fields():
+    rows = [("1-0", "1", "서울", "역사", "서울 > 역사\n수도", 2, 7)]
+    expected = Chunk(
+        id="1-0",
+        doc_id="1",
+        title="서울",
+        section="역사",
+        text="서울 > 역사\n수도",
+        seq=2,
+        token_count=7,
+    )
+    store = PgStore(_RowsConnection(rows))
+
+    assert store.get_chunks("c", "s", ["1-0"]) == [expected]
+    assert list(store.iter_chunks("c", "s")) == [expected]
+
+
 def test_point_id_is_stable_uuid():
     assert point_id("1-0") == point_id("1-0")
     assert point_id("1-0") != point_id("1-1")

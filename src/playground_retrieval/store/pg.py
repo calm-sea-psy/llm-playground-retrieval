@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import psycopg
@@ -46,6 +46,11 @@ CREATE TABLE IF NOT EXISTS ingest_runs (
 """
 # 청크는 컬렉션(= 소스 × 임베딩 모델 × 청크 설정) 별로 다르므로 (collection, id) 로 구분한다
 ITER_BATCH = 10_000  # 서버 쪽 커서가 한 번에 가져오는 행 수 (청크 1만 개 ≈ 15MB)
+# 청크에 문서 제목을 붙여 읽는 조회문의 앞부분. 컬럼 순서는 _to_chunk 와 맞춘다
+_SELECT_CHUNKS = (
+    "SELECT c.id, c.doc_id, d.title, c.section, c.text, c.seq, c.token_count "
+    "FROM chunks c JOIN documents d ON d.source = %s AND d.id = c.doc_id "
+)
 
 
 @dataclass(frozen=True)
@@ -55,7 +60,8 @@ class PgConfig:
     host: str = "localhost"
     port: int = 5432
     user: str = "rag"
-    password: str = "rag"  # noqa: S105  # 로컬 개발용 기본값 (.env.example 과 같음)
+    password: str = field(default="rag", repr=False)
+    """로그에 찍히지 않게 repr 에서 뺀다. 기본값은 로컬 개발용 (.env.example 과 같음)."""
     dbname: str = "rag"
 
     @classmethod
@@ -153,12 +159,10 @@ class PgStore:
         """청크 id 순서대로 청크를 돌려준다. 문서 제목은 documents 에서 붙인다. 없는 id 는 빠진다."""
         with self._conn.cursor() as cur:
             cur.execute(
-                "SELECT c.id, c.doc_id, d.title, c.section, c.text, c.seq, c.token_count "
-                "FROM chunks c JOIN documents d ON d.source = %s AND d.id = c.doc_id "
-                "WHERE c.collection = %s AND c.id = ANY(%s)",
+                _SELECT_CHUNKS + "WHERE c.collection = %s AND c.id = ANY(%s)",
                 (source, collection, list(chunk_ids)),
             )
-            by_id = {row[0]: Chunk(*row) for row in cur.fetchall()}
+            by_id = {row[0]: _to_chunk(row) for row in cur.fetchall()}
         return [by_id[chunk_id] for chunk_id in chunk_ids if chunk_id in by_id]
 
     def iter_chunks(
@@ -169,13 +173,11 @@ class PgStore:
             with self._conn.cursor(name="iter_chunks") as cur:
                 cur.itersize = batch_size
                 cur.execute(
-                    "SELECT c.id, c.doc_id, d.title, c.section, c.text, c.seq, c.token_count "
-                    "FROM chunks c JOIN documents d ON d.source = %s AND d.id = c.doc_id "
-                    "WHERE c.collection = %s ORDER BY c.doc_id, c.seq",
+                    _SELECT_CHUNKS + "WHERE c.collection = %s ORDER BY c.doc_id, c.seq",
                     (source, collection),
                 )
                 for row in cur:
-                    yield Chunk(*row)
+                    yield _to_chunk(row)
         finally:
             self._conn.rollback()  # 읽기만 한 트랜잭션을 닫는다
 
@@ -229,3 +231,17 @@ class PgStore:
             cur.execute(f"SELECT count(*) FROM {table}")  # noqa: S608  # 위에서 허용한 테이블 이름만
             (value,) = cur.fetchone()
         return value
+
+
+def _to_chunk(row: tuple[str, str, str, str, str, int, int]) -> Chunk:
+    """_SELECT_CHUNKS 컬럼 순서의 행을 Chunk 로 바꾼다."""
+    chunk_id, doc_id, title, section, text, seq, token_count = row
+    return Chunk(
+        id=chunk_id,
+        doc_id=doc_id,
+        title=title,
+        section=section,
+        text=text,
+        seq=seq,
+        token_count=token_count,
+    )
