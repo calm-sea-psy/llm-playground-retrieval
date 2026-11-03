@@ -1,16 +1,12 @@
 import asyncio
 import time
+from collections.abc import Iterator, Mapping
 
 import pytest
 from playground_corpus import Chunk
 
 from playground_retrieval.core import Filters, Hit
-from playground_retrieval.search import (
-    KiwiAnalyzer,
-    SearchService,
-    SearchSettings,
-    service as service_module,
-)
+from playground_retrieval.search import KiwiAnalyzer, SearchService, SearchSettings
 from playground_retrieval.search.service import TOP_K
 
 CHUNK = Chunk(
@@ -73,21 +69,41 @@ def test_search_runs_one_query_at_a_time():
 
 
 class _StopBuildError(Exception):
-    """build 가 BM25 색인을 준비하는 데까지 왔는지 보려고 거기서 멈춘다 (모델 · 저장소 없이)."""
+    """build 가 BM25 색인을 만든 뒤까지 왔는지 보려고 거기서 멈춘다 (모델을 올리기 전에)."""
 
 
-def test_build_uses_the_given_analyzer(monkeypatch: pytest.MonkeyPatch):
-    given = KiwiAnalyzer(kiwi=object())  # Kiwi 를 올리지 않는다 — 넘긴 것이 그대로 쓰이는지만 본다
-    seen = []
+class _RecordingKiwi:
+    """Kiwi 모델 없이 받은 텍스트만 기록한다. 토큰은 내지 않는다."""
 
-    def fake_index(settings, pg, analyzer):
-        seen.append(analyzer)
+    def __init__(self) -> None:
+        self.texts: list[list[str]] = []
+
+    def tokenize(self, texts: list[str]) -> list[list[object]]:
+        self.texts.append(texts)
+        return [[] for _ in texts]
+
+
+class _CatalogStoppingBeforeModels:
+    """청크 하나를 흘려 주고, 색인 다음 단계인 분류 조회에서 멈춘다."""
+
+    def iter_chunks(self, collection: str, source: str) -> Iterator[Chunk]:
+        del collection, source  # 컬렉션은 하나뿐이다
+        yield CHUNK
+
+    def doc_categories(self, collection: str, source: str) -> Mapping[str, frozenset[str]]:
         raise _StopBuildError
 
-    monkeypatch.setattr(service_module, "_bm25_index", fake_index)
+
+def test_build_uses_the_given_analyzer():
+    kiwi = _RecordingKiwi()
     settings = SearchSettings(collection="c", source="s", model="kure-v1")
 
     with pytest.raises(_StopBuildError):
-        SearchService.build(settings, pg=None, qdrant=None, analyzer=given)
+        SearchService.build(
+            settings,
+            pg=_CatalogStoppingBeforeModels(),
+            qdrant=None,
+            analyzer=KiwiAnalyzer(kiwi),
+        )
 
-    assert seen == [given]
+    assert kiwi.texts == [[CHUNK.text]]
