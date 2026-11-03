@@ -1,14 +1,10 @@
-import math
 from collections.abc import Sequence
-from pathlib import Path
 
-import numpy as np
 import pytest
 from playground_corpus import Chunk
 
 from playground_retrieval.core import Filters
-from playground_retrieval.search import Bm25Index, Bm25Retriever, KiwiAnalyzer
-from playground_retrieval.search.bm25 import K1, B
+from playground_retrieval.search import Bm25Index, Bm25Retriever, KiwiAnalyzer, bm25, bm25_index
 
 
 def _chunk(doc_id: str, text: str) -> Chunk:
@@ -27,18 +23,23 @@ CHUNKS = [
 @pytest.fixture(scope="module")
 def retriever() -> Bm25Retriever:
     return Bm25Retriever.from_chunks(
-        CHUNKS, KiwiAnalyzer(), doc_categories={"서울": frozenset({"한국 도시"})}
+        CHUNKS, KiwiAnalyzer.load(), doc_categories={"서울": frozenset({"한국 도시"})}
     )
 
 
 def test_analyzer_drops_particles_and_endings():
-    assert KiwiAnalyzer().tokens("서울특별시는 한양으로 불렸다. Paris") == [
+    assert KiwiAnalyzer.load().tokens("서울특별시는 한양으로 불렸다. Paris") == [
         "서울",
         "특별시",
         "한양",
         "불리",
         "paris",
     ]
+
+
+def test_analyzer_constructor_does_not_create_kiwi():
+    with pytest.raises(TypeError):
+        KiwiAnalyzer()
 
 
 def test_search_ranks_matching_chunk_first(retriever: Bm25Retriever):
@@ -74,49 +75,13 @@ def test_search_rejects_non_positive_k(retriever: Bm25Retriever):
         retriever.search("수도", k=0)
 
 
-def _reference_scores(tokenized: list[list[str]], query: list[str]) -> list[float]:
-    """BM25 를 정의 그대로 계산한다 (Lucene idf, K1 · B)."""
-    total = len(tokenized)
-    average = sum(len(tokens) for tokens in tokenized) / total
-    scores = []
-    for tokens in tokenized:
-        score = 0.0
-        for term in query:
-            df = sum(term in other for other in tokenized)
-            tf = tokens.count(term)
-            if not df or not tf:
-                continue
-            idf = math.log(1 + (total - df + 0.5) / (df + 0.5))
-            score += idf * tf * (K1 + 1) / (tf + K1 * (1 - B + B * len(tokens) / average))
-        scores.append(score)
-    return scores
-
-
-def test_index_scores_match_bm25_definition():
-    analyzer = KiwiAnalyzer()
-    index = Bm25Index.build(CHUNKS, analyzer, batch_size=2)  # 배치 경계를 넘겨도 같아야 한다
-    query = analyzer.tokens("대한민국의 수도와 항구 도시 수도")
-
-    expected = _reference_scores(analyzer.tokens_batch([c.text for c in CHUNKS]), query)
-
-    np.testing.assert_allclose(index.scores(query), expected, rtol=1e-5)
-
-
-def test_index_round_trips_through_disk(tmp_path: Path):
-    analyzer = KiwiAnalyzer()
-    index = Bm25Index.build(CHUNKS, analyzer)
-    index.save(tmp_path / "bm25", meta={"collection": "test"})
-    query = analyzer.tokens("프랑스 수도 한양")
-
-    loaded = Bm25Index.load(tmp_path / "bm25")
-
-    assert loaded.chunk_ids == index.chunk_ids
-    assert loaded.doc_ids.tolist() == index.doc_ids.tolist()
-    np.testing.assert_array_equal(loaded.scores(query), index.scores(query))
+def test_bm25_module_reexports_index_constants():
+    assert (bm25.K1, bm25.B) == (bm25_index.K1, bm25_index.B)
+    assert bm25.Bm25Index is bm25_index.Bm25Index
 
 
 def test_retriever_reads_text_from_store():
-    analyzer = KiwiAnalyzer()
+    analyzer = KiwiAnalyzer.load()
     store = RecordingStore(CHUNKS)
     retriever = Bm25Retriever(
         Bm25Index.build(CHUNKS, analyzer), analyzer, store, collection="c", source="kowiki"

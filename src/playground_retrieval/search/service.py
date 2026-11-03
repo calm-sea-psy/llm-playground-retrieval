@@ -15,7 +15,8 @@ from playground_corpus import EMBEDDING_MODELS, Chunk, SentenceTransformerEmbedd
 from playground_retrieval.core import Filters, Hit, Retriever
 from playground_retrieval.search import cross_encoder, hybrid, rerank
 from playground_retrieval.search.analyzer import KiwiAnalyzer
-from playground_retrieval.search.bm25 import Bm25Index, Bm25Retriever
+from playground_retrieval.search.bm25 import Bm25Retriever
+from playground_retrieval.search.bm25_index import META_FILE, Bm25Index
 from playground_retrieval.search.cross_encoder import CrossEncoderScorer
 from playground_retrieval.search.dense import ChunkStore, DenseRetriever, VectorIndex
 from playground_retrieval.search.hybrid import HybridRetriever
@@ -113,7 +114,7 @@ class SearchService:
         Raises:
           ValueError: 컬렉션에 청크가 없을 때 (적재 전이거나 이름이 틀렸을 때).
         """
-        analyzer = analyzer or KiwiAnalyzer()
+        analyzer = analyzer or KiwiAnalyzer.load()
         start = time.perf_counter()
         index = _bm25_index(settings, pg, analyzer)
         if not len(index):
@@ -160,7 +161,7 @@ class SearchService:
 
 def _bm25_index(settings: SearchSettings, pg: ChunkCatalog, analyzer: KiwiAnalyzer) -> Bm25Index:
     """저장한 색인이 있으면 읽고, 없으면 PG 청크로 만든다."""
-    if settings.bm25_index is not None and (settings.bm25_index / "meta.json").exists():
+    if settings.bm25_index is not None and (settings.bm25_index / META_FILE).exists():
         logger.info("bm25 index: loading %s", settings.bm25_index)
         return Bm25Index.load(settings.bm25_index)
     return Bm25Index.build(pg.iter_chunks(settings.collection, settings.source), analyzer)

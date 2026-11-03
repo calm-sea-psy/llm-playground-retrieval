@@ -46,7 +46,7 @@ class FaissIndex:
         self.chunk_ids = tuple(chunk_ids)
         """색인 행 번호 → 청크 id."""
         self.collection = collection
-        self._doc_ids = np.array(doc_ids)
+        self._doc_ids = np.array(doc_ids, dtype=np.str_)
         self._doc_categories = doc_categories or {}
 
     @classmethod
@@ -86,7 +86,15 @@ class FaissIndex:
         doc_ids: Sequence[str] = (),
         categories: Sequence[str] = (),
     ) -> list[VectorHit]:
-        """벡터와 가까운 청크 k건을 코사인 유사도 내림차순으로 돌려준다. doc_ids · categories 가 있으면 그 안에서만."""
+        """벡터와 가까운 청크 k건을 코사인 유사도 내림차순으로 돌려준다. doc_ids · categories 가 있으면 그 안에서만.
+
+        Args:
+          name: 컬렉션 이름. 이 색인의 collection 과 같아야 한다.
+          vector: 질의 벡터 (d,). 정규화하지 않아도 된다.
+          k: 돌려받을 건수. 1 이상.
+          doc_ids: 이 문서들 안에서만.
+          categories: 이 분류 중 하나에 속한 문서에서만.
+        """
         if name != self.collection:
             raise ValueError(f"this index holds {self.collection!r}, got {name=}")
         if k < 1:
@@ -108,7 +116,13 @@ class FaissIndex:
     def _exact(
         self, query: NDArray[np.float32], rows: NDArray[np.int64], k: int
     ) -> list[VectorHit]:
-        """허용된 행만 전수 비교. 압축 색인(PQ · SQ)은 복원한 근사 벡터로 비교한다."""
+        """허용된 행만 전수 비교. 압축 색인(PQ · SQ)은 복원한 근사 벡터로 비교한다.
+
+        Args:
+          query: 정규화한 질의 벡터 (d,).
+          rows: 허용된 행 번호 (m,).
+          k: 돌려받을 건수.
+        """
         if not len(rows):
             return []
         scores = self.index.reconstruct_batch(rows) @ query
@@ -121,6 +135,7 @@ class FaissIndex:
         )
 
     def _allowed(self, doc_ids: Sequence[str], categories: Sequence[str]) -> NDArray[np.bool_]:
+        """색인 행마다 필터 통과 여부 (n,)."""
         mask = np.ones(len(self._doc_ids), dtype=bool)
         if doc_ids:
             mask &= np.isin(self._doc_ids, list(doc_ids))
@@ -132,7 +147,7 @@ class FaissIndex:
 
 
 def _normalize(vectors: NDArray[np.float32]) -> NDArray[np.float32]:
-    """L2 정규화한 복사본. 정규화 벡터의 내적 = 코사인 유사도."""
+    """(n, d) 벡터를 L2 정규화한 복사본 (n, d). 정규화 벡터의 내적 = 코사인 유사도."""
     normalized = np.ascontiguousarray(vectors, dtype=np.float32).copy()
     faiss.normalize_L2(normalized)
     return normalized

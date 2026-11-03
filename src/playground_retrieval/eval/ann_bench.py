@@ -38,5 +38,5 @@ def latency_summary(latencies_ms: Sequence[float]) -> LatencySummary:
     """지연 목록의 p50 · p99 (ms, 소수 둘째 자리)."""
     if not latencies_ms:
         raise ValueError("latencies_ms must not be empty")
-    p50, p99 = np.percentile(np.asarray(latencies_ms), [50, 99])
+    p50, p99 = np.percentile(np.asarray(latencies_ms, dtype=np.float64), [50, 99])
     return LatencySummary(p50_ms=round(float(p50), 2), p99_ms=round(float(p99), 2))

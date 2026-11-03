@@ -1,4 +1,5 @@
 import logging
+import sys
 from collections.abc import Sequence
 
 import numpy as np
@@ -126,3 +127,10 @@ def test_cross_encoder_scorer_warns_when_pairs_would_be_truncated(caplog: pytest
 
 def test_cross_encoder_scorer_handles_no_pairs():
     assert CrossEncoderScorer(FakeCrossEncoder()).score([]).shape == (0,)
+
+
+def test_load_explains_missing_rerank_extras(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setitem(sys.modules, "torch", None)  # 설치되지 않은 것처럼 import 가 실패한다
+
+    with pytest.raises(ImportError, match=r"playground-retrieval\[rerank\]"):
+        CrossEncoderScorer.load()
