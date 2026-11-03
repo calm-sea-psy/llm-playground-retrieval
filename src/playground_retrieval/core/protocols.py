@@ -1,19 +1,8 @@
-"""코퍼스 · 검색기를 바꿔 끼우는 계약."""
+"""검색기를 바꿔 끼우는 계약."""
 
-from collections.abc import Iterator
 from typing import Protocol
 
-from playground_corpus import Document
-
 from playground_retrieval.core.types import Filters, Hit
-
-
-class Source(Protocol):
-    """문서를 내놓는 코퍼스. 청킹 이후 단계는 직접 부르지 않는다."""
-
-    def documents(self) -> Iterator[Document]:
-        """정제된 문서를 하나씩 돌려준다."""
-        ...
 
 
 class Retriever(Protocol):

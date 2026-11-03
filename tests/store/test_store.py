@@ -158,15 +158,14 @@ def test_pg_upserts_and_reads_chunks_in_requested_order(pg: PgStore):
     assert pg.get_chunks("kowiki_test", "kowiki", ["2-0", "없음", "1-0"]) == [CHUNKS[1], CHUNKS[0]]
 
 
-def test_pg_reads_all_chunks_and_categories_of_collection(pg: PgStore):
+def test_pg_streams_chunks_and_reads_categories_of_collection(pg: PgStore):
     pg.create_schema()
     pg.upsert_documents("kowiki", DOCS)
     pg.upsert_chunks("kowiki_test", CHUNKS)
     pg.upsert_chunks("other", CHUNKS[:1])
 
-    assert pg.all_chunks("kowiki_test", "kowiki") == CHUNKS
-    assert pg.all_chunks("other", "kowiki") == CHUNKS[:1]
     assert list(pg.iter_chunks("kowiki_test", "kowiki", batch_size=1)) == CHUNKS
+    assert list(pg.iter_chunks("other", "kowiki")) == CHUNKS[:1]
     assert pg.collection_titles("other", "kowiki") == {"서울"}
     assert pg.count("chunks") == 3  # 흘려 읽은 뒤 rollback 해도 적재한 청크는 남는다
     assert pg.doc_categories("kowiki_test", "kowiki") == {

@@ -161,17 +161,6 @@ class PgStore:
             by_id = {row[0]: Chunk(*row) for row in cur.fetchall()}
         return [by_id[chunk_id] for chunk_id in chunk_ids if chunk_id in by_id]
 
-    def all_chunks(self, collection: str, source: str) -> list[Chunk]:
-        """컬렉션의 청크 전부를 (문서 id, 순서) 순으로 돌려준다. 메모리 색인(BM25)을 만들 때 쓴다."""
-        with self._conn.cursor() as cur:
-            cur.execute(
-                "SELECT c.id, c.doc_id, d.title, c.section, c.text, c.seq, c.token_count "
-                "FROM chunks c JOIN documents d ON d.source = %s AND d.id = c.doc_id "
-                "WHERE c.collection = %s ORDER BY c.doc_id, c.seq",
-                (source, collection),
-            )
-            return [Chunk(*row) for row in cur.fetchall()]
-
     def iter_chunks(
         self, collection: str, source: str, *, batch_size: int = ITER_BATCH
     ) -> Iterator[Chunk]:
