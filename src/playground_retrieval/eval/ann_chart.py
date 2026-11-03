@@ -144,7 +144,7 @@ def _axes(
 ) -> list[str]:
     out = []
     bottom = y0 + _TOP + plot_h
-    for tick in np.arange(x_min, 1.0001, 0.1):
+    for tick in np.arange(x_min, 1.0001, 0.1, dtype=np.float64):
         x = sx(float(tick))
         out.append(f'<line class="grid" x1="{x:.1f}" y1="{y0 + _TOP}" x2="{x:.1f}" y2="{bottom}"/>')
         out.append(

@@ -25,7 +25,15 @@ class VectorIndex(Protocol):
         doc_ids: Sequence[str] = (),
         categories: Sequence[str] = (),
     ) -> list[VectorHit]:
-        """벡터와 가까운 청크 k건을 유사도 내림차순으로 돌려준다."""
+        """벡터와 가까운 청크 k건을 유사도 내림차순으로 돌려준다.
+
+        Args:
+          name: 컬렉션 이름.
+          vector: 질의 벡터 (d,).
+          k: 돌려받을 건수.
+          doc_ids: 이 문서들 안에서만.
+          categories: 이 분류 중 하나에 속한 문서에서만.
+        """
         ...
 
 
