@@ -44,7 +44,7 @@ with PgStore.connect(PgConfig.from_env()) as pg:
         embedder, QdrantStore.from_env(), pg, collection="kowiki_kure-v1", source="kowiki"
     )
     bm25 = Bm25Retriever(
-        Bm25Index.load(index_dir), KiwiAnalyzer(), pg, collection="kowiki_kure-v1", source="kowiki"
+        Bm25Index.load(index_dir), KiwiAnalyzer.load(), pg, collection="kowiki_kure-v1", source="kowiki"
     )
     hits = Reranker(HybridRetriever([dense, bm25]), scorer).search("조선의 수도는?", k=5)
 ```

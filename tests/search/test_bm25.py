@@ -27,18 +27,23 @@ CHUNKS = [
 @pytest.fixture(scope="module")
 def retriever() -> Bm25Retriever:
     return Bm25Retriever.from_chunks(
-        CHUNKS, KiwiAnalyzer(), doc_categories={"서울": frozenset({"한국 도시"})}
+        CHUNKS, KiwiAnalyzer.load(), doc_categories={"서울": frozenset({"한국 도시"})}
     )
 
 
 def test_analyzer_drops_particles_and_endings():
-    assert KiwiAnalyzer().tokens("서울특별시는 한양으로 불렸다. Paris") == [
+    assert KiwiAnalyzer.load().tokens("서울특별시는 한양으로 불렸다. Paris") == [
         "서울",
         "특별시",
         "한양",
         "불리",
         "paris",
     ]
+
+
+def test_analyzer_constructor_does_not_create_kiwi():
+    with pytest.raises(TypeError):
+        KiwiAnalyzer()
 
 
 def test_search_ranks_matching_chunk_first(retriever: Bm25Retriever):
@@ -93,7 +98,7 @@ def _reference_scores(tokenized: list[list[str]], query: list[str]) -> list[floa
 
 
 def test_index_scores_match_bm25_definition():
-    analyzer = KiwiAnalyzer()
+    analyzer = KiwiAnalyzer.load()
     index = Bm25Index.build(CHUNKS, analyzer, batch_size=2)  # 배치 경계를 넘겨도 같아야 한다
     query = analyzer.tokens("대한민국의 수도와 항구 도시 수도")
 
@@ -103,7 +108,7 @@ def test_index_scores_match_bm25_definition():
 
 
 def test_index_round_trips_through_disk(tmp_path: Path):
-    analyzer = KiwiAnalyzer()
+    analyzer = KiwiAnalyzer.load()
     index = Bm25Index.build(CHUNKS, analyzer)
     index.save(tmp_path / "bm25", meta={"collection": "test"})
     query = analyzer.tokens("프랑스 수도 한양")
@@ -116,7 +121,7 @@ def test_index_round_trips_through_disk(tmp_path: Path):
 
 
 def test_retriever_reads_text_from_store():
-    analyzer = KiwiAnalyzer()
+    analyzer = KiwiAnalyzer.load()
     store = RecordingStore(CHUNKS)
     retriever = Bm25Retriever(
         Bm25Index.build(CHUNKS, analyzer), analyzer, store, collection="c", source="kowiki"

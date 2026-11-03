@@ -32,7 +32,7 @@ class Bm25Index:
     질의 단어가 나오는 청크만 더하므로 질의 하나가 청크 수에 비례하지 않는다.
 
     예)
-        index = Bm25Index.build(chunks, KiwiAnalyzer())
+        index = Bm25Index.build(chunks, KiwiAnalyzer.load())
         index.save(Path("data/index/bm25/kowiki_kure-v1"))
         index = Bm25Index.load(Path("data/index/bm25/kowiki_kure-v1"))
     """
@@ -146,8 +146,8 @@ class Bm25Retriever:
     """BM25 색인으로 청크를 찾고 원문은 저장소에서 꺼낸다.
 
     예)
-        bm25 = Bm25Retriever(Bm25Index.load(path), KiwiAnalyzer(), pg, collection="kowiki_kure-v1", source="kowiki")
-        bm25 = Bm25Retriever.from_chunks(chunks, KiwiAnalyzer())  # 서브셋 · 테스트: 메모리에서 색인 + 원문
+        bm25 = Bm25Retriever(Bm25Index.load(path), KiwiAnalyzer.load(), pg, collection="kowiki_kure-v1", source="kowiki")
+        bm25 = Bm25Retriever.from_chunks(chunks, KiwiAnalyzer.load())  # 서브셋 · 테스트: 메모리에서 색인 + 원문
         hits = bm25.search("조선의 수도는?", k=5)
     """
 

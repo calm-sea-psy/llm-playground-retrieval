@@ -113,7 +113,7 @@ class SearchService:
         Raises:
           ValueError: 컬렉션에 청크가 없을 때 (적재 전이거나 이름이 틀렸을 때).
         """
-        analyzer = analyzer or KiwiAnalyzer()
+        analyzer = analyzer or KiwiAnalyzer.load()
         start = time.perf_counter()
         index = _bm25_index(settings, pg, analyzer)
         if not len(index):

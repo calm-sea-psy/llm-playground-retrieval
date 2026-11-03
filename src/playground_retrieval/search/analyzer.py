@@ -1,5 +1,7 @@
 """BM25 용 한국어 형태소 분석: Kiwi 로 조사 · 어미를 떼고 명사 · 어간 · 외국어 · 숫자만 남긴다."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 
 from kiwipiepy import Kiwi, Token
@@ -14,12 +16,20 @@ class KiwiAnalyzer:
     """텍스트를 BM25 색인 · 질의용 토큰 목록으로 바꾼다.
 
     예)
-        analyzer = KiwiAnalyzer()
+        analyzer = KiwiAnalyzer.load()
         analyzer.tokens("서울특별시는 한양으로 불렸다")  # ["서울", "특별시", "한양", "불리"]
+
+        kiwi = Kiwi()  # 같은 프로세스에서 Kiwi 를 따로 쓰는 쪽이 있으면 하나를 나눠 쓴다
+        analyzer = KiwiAnalyzer(kiwi)
     """
 
-    def __init__(self, kiwi: Kiwi | None = None) -> None:
-        self._kiwi = kiwi or Kiwi()
+    def __init__(self, kiwi: Kiwi) -> None:
+        self._kiwi = kiwi
+
+    @classmethod
+    def load(cls) -> KiwiAnalyzer:
+        """옵션 · 사용자 사전 없는 Kiwi 모델을 올려 만든다. 모델 하나가 메모리를 약 500MB 쓴다."""
+        return cls(Kiwi())
 
     def tokens(self, text: str) -> list[str]:
         """한 텍스트의 검색 토큰. 외국어는 소문자로."""
