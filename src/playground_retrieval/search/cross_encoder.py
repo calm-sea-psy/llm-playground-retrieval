@@ -16,6 +16,7 @@ MODEL_ID = "BAAI/bge-reranker-v2-m3"
 # 1024 면 잘리지 않고, 길이를 묶어 둬야 긴 입력 하나가 배치 전체를 느리게 하지 않는다
 MAX_LENGTH = 1024
 BATCH_SIZE = 32
+_INSTALL_HINT = "리랭커 실행에는 torch · sentence-transformers 가 필요하다: uv add 'playground-retrieval[rerank]'"
 
 
 class PairTokenizer(Protocol):
@@ -36,7 +37,7 @@ class CrossEncoderModel(Protocol):
     def predict(
         self, sentences: list[tuple[str, str]], *, batch_size: int, show_progress_bar: bool
     ) -> NDArray[np.float32]:
-        """쌍마다 점수 (시그모이드 적용, 0~1)."""
+        """쌍 n개의 점수 (n,). 시그모이드 적용, 0~1."""
         ...
 
 
@@ -69,9 +70,11 @@ class CrossEncoderScorer:
         max_length: int = MAX_LENGTH,
     ) -> CrossEncoderScorer:
         """모델을 내려받아(캐시) 올린다. GPU 가 있으면 GPU, fp16 이면 반정밀도로."""
-        import torch  # noqa: PLC0415  # 무거운 런타임 — 리랭커를 쓸 때만 올린다
-        from sentence_transformers import CrossEncoder  # noqa: PLC0415  # 같은 이유
-
+        try:
+            import torch  # noqa: PLC0415  # [rerank] extras — base 설치에서 import 가 깨지지 않게
+            from sentence_transformers import CrossEncoder  # noqa: PLC0415  # [rerank] extras
+        except ImportError as e:
+            raise ImportError(_INSTALL_HINT) from e
         device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         dtype = torch.float16 if fp16 and device.startswith("cuda") else torch.float32
         model = CrossEncoder(
