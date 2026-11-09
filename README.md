@@ -188,7 +188,9 @@ collection = "kowiki-subset-10000_kure-v1"
 embedder = SentenceTransformerEmbedder.load(EMBEDDING_MODELS["kure-v1"])
 
 with PgStore.connect(PgConfig.from_env()) as pg:
-    dense = DenseRetriever(embedder, QdrantStore.from_env(), pg, collection=collection, source="kowiki")
+    dense = DenseRetriever(
+        embedder, QdrantStore.from_env(), pg, collection=collection, source="kowiki"
+    )
     bm25 = Bm25Retriever(
         Bm25Index.load(Path("data/index/bm25") / collection),
         KiwiAnalyzer.load(),
