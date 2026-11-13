@@ -45,7 +45,14 @@ CHUNKS = [
 ]
 
 
-QDRANT_ENV = ("QDRANT_MODE", "QDRANT_URL", "QDRANT_API_KEY", "QDRANT_GRPC", "QDRANT_TIMEOUT")
+QDRANT_ENV = (
+    "QDRANT_MODE",
+    "QDRANT_LOCAL_URL",
+    "QDRANT_URL",
+    "QDRANT_API_KEY",
+    "QDRANT_GRPC",
+    "QDRANT_TIMEOUT",
+)
 
 
 @pytest.fixture
@@ -72,8 +79,20 @@ def test_qdrant_config_ignores_cloud_address_unless_mode_is_cloud(clean_env: pyt
     assert QdrantConfig.from_env() == local
 
 
+def test_qdrant_config_local_url_changes_only_the_local_address(clean_env: pytest.MonkeyPatch):
+    clean_env.setenv("QDRANT_LOCAL_URL", "http://qdrant:6333")
+    clean_env.setenv("QDRANT_URL", "https://example.cloud.qdrant.io:6333")
+    clean_env.setenv("QDRANT_API_KEY", "secret-key")
+
+    config = QdrantConfig.from_env()
+
+    # local 은 주소만 바꾸고 cloud 키를 붙이지 않는다
+    assert (config.url, config.api_key) == ("http://qdrant:6333", None)
+
+
 def test_qdrant_config_reads_cloud_settings_and_hides_key(clean_env: pytest.MonkeyPatch):
     clean_env.setenv("QDRANT_MODE", "cloud")
+    clean_env.setenv("QDRANT_LOCAL_URL", "http://qdrant:6333")  # cloud 에서는 보지 않는다
     clean_env.setenv("QDRANT_URL", "https://example.cloud.qdrant.io:6333")
     clean_env.setenv("QDRANT_API_KEY", "secret-key")
     clean_env.setenv("QDRANT_GRPC", "0")
@@ -99,6 +118,7 @@ def test_qdrant_config_rejects_cloud_without_url_and_unknown_mode(clean_env: pyt
 
 def test_qdrant_config_treats_empty_values_as_unset(clean_env: pytest.MonkeyPatch):
     clean_env.setenv("QDRANT_MODE", "")
+    clean_env.setenv("QDRANT_LOCAL_URL", "")
     clean_env.setenv("QDRANT_URL", "")
     clean_env.setenv("QDRANT_API_KEY", "")  # .env.example 를 복사만 하고 비워 둔 경우
 
