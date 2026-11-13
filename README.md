@@ -141,7 +141,8 @@ docker compose -f ../llm-playground-wiki/docker-compose.yml up -d --wait
 
 | 항목 | 변수 | 값 | 없으면 |
 | --- | --- | --- | --- |
-| Qdrant 모드 | `QDRANT_MODE` | `local` · `cloud` | `local` — 로컬 Qdrant(`http://localhost:6333`) |
+| Qdrant 모드 | `QDRANT_MODE` | `local` · `cloud` | `local` — 로컬 Qdrant |
+| Qdrant 로컬 주소 | `QDRANT_LOCAL_URL` | local 모드의 주소 (같은 compose 네트워크의 컨테이너면 `http://qdrant:6333`) | `http://localhost:6333` |
 | Qdrant Cloud 주소 | `QDRANT_URL` | `QDRANT_MODE=cloud`일 때만 읽음 | cloud인데 비면 `ValueError` |
 | Qdrant Cloud 키 | `QDRANT_API_KEY` | `QDRANT_MODE=cloud`일 때만 읽음 | 키 없이 접속 |
 | Qdrant 프로토콜 | `QDRANT_GRPC` | `0`이면 REST | gRPC |
@@ -149,7 +150,7 @@ docker compose -f ../llm-playground-wiki/docker-compose.yml up -d --wait
 | PostgreSQL 접속 | `POSTGRES_HOST` · `POSTGRES_PORT` | | `localhost` · `5432` |
 | PostgreSQL 계정 | `POSTGRES_USER` · `POSTGRES_PASSWORD` · `POSTGRES_DB` | | 모두 `rag` |
 
-주소 · 키가 환경에 있어도 `QDRANT_MODE=cloud`를 켜지 않으면 로컬 Qdrant에 붙습니다.
+주소 · 키가 환경에 있어도 `QDRANT_MODE=cloud`를 켜지 않으면 로컬 Qdrant에 붙습니다. local 모드는 `QDRANT_LOCAL_URL`로 주소만 바꾸고 Cloud 키는 붙이지 않습니다.
 
 ## 사용법
 
