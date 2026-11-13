@@ -158,10 +158,10 @@ docker compose -f ../llm-playground-wiki/docker-compose.yml up -d --wait
 
 ```bash
 # 기본 — 검색기 · 저장소 · 인제스트 흐름
-uv add "playground-retrieval @ git+https://github.com/calm-sea-psy/llm-playground-retrieval@v0.3.0"
+uv add "playground-retrieval @ git+https://github.com/calm-sea-psy/llm-playground-retrieval@v0.4.0"
 
 # 리랭커 · 임베딩 모델 실행 (torch, sentence-transformers)
-uv add "playground-retrieval[rerank] @ git+https://github.com/calm-sea-psy/llm-playground-retrieval@v0.3.0"
+uv add "playground-retrieval[rerank] @ git+https://github.com/calm-sea-psy/llm-playground-retrieval@v0.4.0"
 ```
 
 0.x 동안은 깨는 변경이 있을 수 있습니다. 이 레포와 함께 고칠 때는 같은 부모 폴더에 나란히 clone 하고 잠깐 path로 바꿔 씁니다.
